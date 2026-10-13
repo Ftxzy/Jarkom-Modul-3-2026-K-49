@@ -29,17 +29,17 @@ Prefix IP kelompok kami `10.88`, grup `K-49`, domain `K-49.com`, subnet mask `/2
 
 ### Console tiap node
 
-Akses lewat `telnet 10.4.89.250:<port>` (jaringan atau VPN ITS).
+Akses lewat `telnet 10.4.89.250:<port>` (jaringan atau VPN ITS). **Port berubah setiap project GNS3 dibuka ulang**, jadi baca ulang dari Topology Summary di GNS3 (atau dari API) sebelum memakai tabel ini. Port di bawah adalah kondisi pada 13 Oktober 2026.
 
 | Node | Port | Node | Port | Node | Port |
 | ---- | ---- | ---- | ---- | ---- | ---- |
-| `jichi` | 5027 | `utahime` | 5099 | `geto` | 5104 |
-| `tengen` | 5110 | `shoko` | 5098 | `maki` | 5105 |
-| `itadori` | 5100 | `gojo` | 5097 | `panda` | 5106 |
-| `fushiguro` | 5101 | `ino` | 5113 | `nanami` | 5107 |
-| `zenin` | 5102 | `kusakabe` | 5114 | `todo` | 5108 |
-| `okkotsu` | 5103 | `miwa` | 5116 | `kirara` | 5109 |
-| `yaga` | 5111 | `kugisaki` | 5115 | `inumaki` | 5112 |
+| `jichi` | 5224 | `utahime` | 5206 | `geto` | 5211 |
+| `tengen` | 5217 | `shoko` | 5188 | `maki` | 5212 |
+| `itadori` | 5207 | `gojo` | 5187 | `panda` | 5213 |
+| `fushiguro` | 5208 | `ino` | 5220 | `nanami` | 5214 |
+| `zenin` | 5209 | `kusakabe` | 5221 | `todo` | 5215 |
+| `okkotsu` | 5210 | `miwa` | 5223 | `kirara` | 5216 |
+| `yaga` | 5218 | `kugisaki` | 5222 | `inumaki` | 5219 |
 
 ### Kebijakan DHCP di `tengen` (kondisi akhir)
 
@@ -78,7 +78,7 @@ Semua client juga menerima: mask `255.255.255.0`, gateway (`10.88.2.1` atau `10.
 Semua script ditaruh di `/root` pada node yang dikonfigurasi. Dari komputer yang bisa menjangkau host GNS3:
 
 ```bash
-tools/push-script.sh 01/01_jichi_router.sh 5027    # salin ke /root/01_jichi_router.sh lalu cocokkan checksum
+tools/push-script.sh 01/01_jichi_router.sh 5224    # salin ke /root/01_jichi_router.sh lalu cocokkan checksum
 ```
 
 Atau tempel langsung di console node:
@@ -113,6 +113,7 @@ Script server bersifat kumulatif: `04`, `05`, `06`, dan `07` masing-masing menul
 | 13 | `tengen`, `jichi` | `10/10_tengen_autostart.sh`, `10/10_jichi_autostart.sh` | boot hook `/root/init.sh` |
 | 14 | `utahime` | `11/11_utahime_dns.sh` | master zona `jujutsu.K-49.com` |
 | 15 | `shoko` | `11/11_shoko_dns.sh` | slave, zona tersalin |
+| 16 | `utahime`, `shoko` | `11/11_utahime_autostart.sh`, `11/11_shoko_autostart.sh` | boot hook yang menjalankan `named` setelah restart |
 
 Soal 8 dan 9 adalah pengujian, bukan konfigurasi. Scriptnya hanya dijalankan saat pembuktian.
 
@@ -139,6 +140,8 @@ Periksa berurutan dari lapisan paling bawah: interface, IP dan subnet, gateway d
 
 - **Tidak ada systemd.** Image `debinet` memakai `dumb-init` sebagai PID 1, jadi `systemctl enable` yang ada di modul tidak bisa dipakai. Service dijalankan dengan `service <nama> ...` dan dinyalakan saat boot lewat `/root/init.sh` (lihat [soal 10](#soal-10)).
 - **`service isc-dhcp-relay status` bisa menipu.** Script init relay hanya mengecek ada tidaknya file pid, jadi setelah restart bisa tertulis "running" padahal prosesnya tidak ada. Script dan boot hook kami mengecek proses langsung dengan `pgrep -x dhcrelay`.
+- **Menutup lalu membuka ulang project GNS3 membuat container baru.** Sudah kami coba: yang bertahan hanya `/root` (script dan `boot.log`) dan `/etc/network` (alamat dan pin MAC). Paket dan semua file di `/etc` (misalnya `dhcpd.conf` dan zona BIND) hilang, dan client kehilangan `ifup` dan `dhclient`. Jadi setelah project dibuka ulang, jalankan lagi script sesuai urutan di atas. Stop lalu start node biasa tidak menghapus apa-apa, dan boot hook akan menjalankan service-nya sendiri.
+- **Port console berubah** setiap project dibuka ulang (lihat tabel di atas). Salah port berarti script masuk ke node yang salah, jadi cek nama dengan `hostname` sebelum menjalankan sesuatu.
 - **Client memakai `debinet`**, bukan `alpinet`, sehingga DHCP di client memakai `ifup` dan `dhclient`, bukan `udhcpc`.
 - **Peringatan `Not live until ...` dari `apt`** muncul di `jichi` dan `tengen` karena jam node tertinggal beberapa menit. Tidak berpengaruh ke hasil.
 - Istilah yang dipakai dijelaskan di [`GLOSSARY.md`](GLOSSARY.md). Modul acuan: <https://github.com/lab-kcks/modul-komdat-jarkom-2026> (`Modul 3/Implementasi`, `Modul 3/DHCP`, `Modul 2/DNS`).
@@ -789,11 +792,14 @@ Dua server DNS menyimpan zona yang sama supaya pencarian nama tetap jalan kalau 
 3. Di `shoko`, zona dideklarasikan sebagai slave dengan `masters { 10.88.1.2; };`. Salinan disimpan sebagai teks di `/var/cache/bind` (folder yang boleh ditulis `named`; modul memakai `/etc/bind`).
 4. Untuk menguji, record `tengen` ditambahkan di `utahime` dan serial dinaikkan menjadi `2026101202` lalu zona di-reload. `utahime` mengirim NOTIFY dan `shoko` menarik zona baru sendiri.
 5. `11_itadori_dns.sh` bertanya ke kedua server dari client, dan juga mencoba zone transfer dari client, yang harus ditolak.
+6. Supaya `named` hidup lagi setelah node di-restart, `11_utahime_autostart.sh` dan `11_shoko_autostart.sh` menulis boot hook `/root/init.sh` dengan cara yang sama seperti soal 10: menunggu `eth0` punya alamat, menghapus file pid yang basi, lalu menjalankan `named` kalau prosesnya belum ada. Hasilnya dicatat di `/root/boot.log`. Setelah stop lalu start `utahime` dan `shoko`, bagian `boot hook` baru muncul dan `named` berjalan tanpa perintah manual.
 
 Script:
 
 - [`11_itadori_dns.sh`](11/11_itadori_dns.sh)
+- [`11_shoko_autostart.sh`](11/11_shoko_autostart.sh)
 - [`11_shoko_dns.sh`](11/11_shoko_dns.sh)
+- [`11_utahime_autostart.sh`](11/11_utahime_autostart.sh)
 - [`11_utahime_dns.sh`](11/11_utahime_dns.sh)
 
 ### Cara melakukan validasi
@@ -804,6 +810,8 @@ Script:
 /root/11_itadori_dns.sh tengen.jujutsu.K-49.com   # client, sebelum: NXDOMAIN untuk tengen di kedua server
 /root/11_utahime_dns.sh serial                    # utahime: tambah tengen -> 10.88.4.10, serial 2026101201 -> 2026101202
 /root/11_itadori_dns.sh tengen.jujutsu.K-49.com   # client, sesudah: kedua server serial 2026101202 dan 10.88.4.10
+# setelah stop lalu start node utahime dan shoko dari GNS3:
+cat /root/boot.log; pgrep -a named; dig @127.0.0.1 jujutsu.K-49.com SOA +short
 ```
 
 Hasil:
