@@ -5,6 +5,7 @@
 | Nama | NRP | Dikerjakan |
 | ---- | --- | ---------- |
 | Khalifa Suryadinarta | 5027251104 | Soal 1 sampai 11 |
+| Aura Syahzanani A | 5027251123 | Soal 12 sampai 20 |
 |  |  |  |
 
 > Ini laporan sementara, baru sampai soal 11. Baris kosong di tabel atas dan bagian [Bagian Anggota Kedua](#bagian-anggota-kedua) di paling bawah disiapkan untuk pengerjaan teman satu kelompok (soal 12 dan seterusnya).
