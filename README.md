@@ -876,24 +876,568 @@ tengen.jujutsu.K-49.com. 604800  IN  A  10.88.4.10
 
 ---
 
-## Bagian Anggota Kedua
+# Laporan Soal 12 sampai 20
 
-<!-- Disiapkan untuk teman satu kelompok. Soal 12 dan seterusnya. -->
+> **Penanda SS:** ✅ sudah ada di PDF · ⚠️ ada tapi sebaiknya diambil ulang · 🆕 belum ada, perlu diambil.
+> Path gambar (`NN/proof/...png`) tinggal disesuaikan dengan nama file hasil rename.
 
-| Keterangan | Isi |
-| ---------- | --- |
-| Nama |  |
-| NRP |  |
-| Soal |  |
+| Nama | NRP | Dikerjakan        |
+| ---- | --- | ----------------- |
+|      |     | Soal 12 sampai 20 |
 
-|  |
-| --- |
-|  |
-|  |
-|  |
+## IP node
+
+| Node    | IP           | Node     | IP           |
+| ------- | ------------ | -------- | ------------ |
+| `gojo`  | `10.88.1.10` | `nanami` | `10.88.4.41` |
+| `geto`  | `10.88.4.20` | `todo`   | `10.88.4.42` |
+| `maki`  | `10.88.4.31` | `kirara` | `10.88.4.43` |
+| `panda` | `10.88.4.32` | `yaga`   | `10.88.4.51` |
+|         |              | `inumaki` | `10.88.4.52` |
+
+## Alur arsitektur
+
+```
+client ──► gojo (10.88.1.10) ──┬─ /     ──► maki, panda        (round robin)
+                               └─ /api  ──► geto (10.88.4.20) ─┬─ nanami (w=3)
+                                                               ├─ todo   (w=1)
+                                                               └─ kirara (backup)
+                                           worker API ──► yaga (master DB) ──► inumaki (slave DB)
+```
 
 ---
 
+## Soal 12
+
+**Ringkasan.** Zona `jujutsu.K-49.com` di `utahime` dilengkapi A record ke `gojo`, CNAME `www`, dan zona reverse `1.88.10.in-addr.arpa`. Forwarder ke `192.168.122.1` dipasang di kedua DNS. `shoko` menyalin kedua zona sebagai slave.
+
+**Langkah**
+
+1. Zona forward: A `jujutsu` ke `10.88.1.10`, CNAME `www` ke `jujutsu.K-49.com.`, serial `2026101401`.
+2. Zona reverse `/etc/bind/jujutsu/db.10.88.1` dengan PTR `10` ke `jujutsu.K-49.com.`.
+3. `named.conf.options`: `forwarders { 192.168.122.1; };` dan `forward first;`.
+4. `shoko`: kedua zona bertipe `slave`, salinan tersimpan di `/var/cache/bind`.
+
+**Validasi**
+
+```
+# utahime
+named-checkzone jujutsu.K-49.com /etc/bind/jujutsu/jujutsu.K-49.com
+named-checkzone 1.88.10.in-addr.arpa /etc/bind/jujutsu/db.10.88.1
+pgrep -a -x named; grep -A1 forwarders /etc/bind/named.conf.options
+dig @127.0.0.1 jujutsu.K-49.com A +short
+dig @127.0.0.1 www.jujutsu.K-49.com CNAME +short
+dig @127.0.0.1 -x 10.88.1.10 +short
+dig @127.0.0.1 google.com +short | head -n 2
+
+# shoko
+ls -l /var/cache/bind
+dig @127.0.0.1 jujutsu.K-49.com SOA +short       # serial sama dengan utahime
+
+# client
+for s in 10.88.1.2 10.88.1.3; do dig @$s jujutsu.K-49.com SOA +short; dig @$s -x 10.88.1.10 +short; done
+ping -c 3 google.com
+```
+
+| Bukti                | Hasil di SS                                  |
+| -------------------- | -------------------------------------------- |
+| Zona forward dan reverse | `OK`, serial `2026101401`                |
+| A                    | `10.88.1.10`                                 |
+| CNAME                | `jujutsu.K-49.com.`                          |
+| PTR                  | `jujutsu.K-49.com.`                          |
+| Sinkronisasi slave   | `db.10.88.1` dan `db.jujutsu.K-49.com` ada di `/var/cache/bind`, serial sama |
+| Forwarder            | `google.com` ter-resolve (`142.251.175.100`, `.102`) |
+
+<img width="431" height="223" alt="image" src="https://github.com/user-attachments/assets/96c5383a-e0e6-4234-8efb-7442dfe2503a" />
+
+[![utahime](12/proof/12_utahime_validasi-dns.png)](12/proof/12_utahime_validasi-dns.png)
+
+> 📸 **SS-12.2** ✅ `shoko`: zona tersalin, SOA, A, CNAME, PTR, google.com
+
+[![shoko](12/proof/12_shoko_validasi-slave.png)](12/proof/12_shoko_validasi-slave.png)
+
+> 📸 **SS-12.3** 🆕 client: `dig` ke `@10.88.1.2` dan `@10.88.1.3` (SOA, A, CNAME, PTR)
+
+[![client dig](12/proof/12_client_dig-kedua-server.png)](12/proof/12_client_dig-kedua-server.png)
+
+> 📸 **SS-12.4** 🆕 client: `ping google.com` berhasil
+
+[![client ping](12/proof/12_client_ping-google.png)](12/proof/12_client_ping-google.png)
+
+---
+
+## Soal 13
+
+**Ringkasan.** `yaga` jadi master MariaDB 11.8 dan `inumaki` jadi slave. Database `db_shibuya_K-49` (tabel `request_logs`) otomatis tereplikasi, dan user `jujutsu` bisa diakses remote dari Network 4.
+
+**Langkah**
+
+1. `yaga`: install MariaDB, aktifkan binary log, buat database, tabel `request_logs` (`id`, `hostname`, `client_ip`, `request_uri`, `created_at`), dan user `jujutsu@10.88.4.%`. Posisi awal binlog: `mysql-bin.000001` / `1679`.
+2. `inumaki`: install MariaDB, arahkan ke master `10.88.4.51`, jalankan slave (`13_inumaki_db.sh 10.88.4.51`).
+3. Insert baris uji di `yaga`, cek muncul di `inumaki`.
+4. Dari `tengen` (Network 4), login sebagai `jujutsu` ke kedua server.
+
+Database dan user di `inumaki` tidak dibuat manual, jadi muncul di sana berarti replikasi jalan.
+
+**Validasi**
+
+```
+# yaga
+mysql -e "SHOW MASTER STATUS;"
+mysql -e "INSERT INTO \`db_shibuya_K-49\`.request_logs (hostname, client_ip, request_uri) VALUES ('uji-replikasi','10.88.2.12','/test');"
+
+# inumaki
+mysql -e "SHOW SLAVE STATUS\G" | grep -E "Master_Host|Slave_IO_Running|Slave_SQL_Running|Seconds_Behind|Last_.*Error"
+mysql -e "SELECT * FROM \`db_shibuya_K-49\`.request_logs;"
+
+# tengen
+mysql -h 10.88.4.51 -u jujutsu -p -e "SHOW DATABASES;"
+mysql -h 10.88.4.52 -u jujutsu -p -e "SHOW DATABASES;"
+```
+
+Hasil: `Slave_IO_Running: Yes`, `Slave_SQL_Running: Yes`, `Seconds_Behind_Master: 0`, dan `inumaki` berisi dua baris (`uji-replikasi`, `uji-replikasi-2`).
+
+> 📸 **SS-13.1** ✅ `yaga`: master status, daftar database, tabel `request_logs`
+
+[![yaga master](13/proof/13_yaga_master-status.png)](13/proof/13_yaga_master-status.png)
+
+> 📸 **SS-13.2** ✅ `yaga`: insert `uji-replikasi` dan select
+
+[![yaga insert](13/proof/13_yaga_insert-uji.png)](13/proof/13_yaga_insert-uji.png)
+
+> 📸 **SS-13.3** ✅ `inumaki`: status slave dan 2 baris tabel (pakai SS yang perintahnya terlihat)
+
+[![inumaki slave](13/proof/13_inumaki_slave-status.png)](13/proof/13_inumaki_slave-status.png)
+
+> 📸 **SS-13.4** ✅ `tengen`: akses remote `jujutsu` ke kedua database
+
+[![tengen remote](13/proof/13_tengen_akses-remote.png)](13/proof/13_tengen_akses-remote.png)
+
+---
+
+## Soal 14
+
+**Ringkasan.** Web worker (`maki`, `panda`) dan API worker (`nanami`, `todo`, `kirara`) dipasang Nginx + PHP-FPM. Web worker menampilkan nama hostnya, API worker membalas JSON dan menulis log ke `yaga` lewat user `api`. Akses tanpa domain diputus, dan akses langsung ke worker ditolak (`403`).
+
+**Konfigurasi per node**
+
+| Node                      | Root             | `allow`                      | Fungsi                                  |
+| ------------------------- | ---------------- | ---------------------------- | --------------------------------------- |
+| `panda`                   | `/var/www/html`  | `10.88.1.10`, `127.0.0.1`    | `Web Frontend K-49`, `Dilayani oleh: panda` |
+| `maki`                    | `/var/www/web`   | `10.88.1.10`, `127.0.0.1`    | `Dilayani oleh: maki`                   |
+| `nanami`, `todo`, `kirara` | `/var/www/api`  | `10.88.4.20`, `127.0.0.1`    | JSON `status`, `worker`, `logged`       |
+
+Selain `allow` di atas semua `deny all`. Tiap worker punya `default_server` dengan `return 444` untuk akses lewat IP. User `api@10.88.4.%` hanya punya `SELECT, INSERT` pada `request_logs`.
+
+**Validasi**
+
+```
+# tiap worker
+nginx -t
+curl -s -H "Host: jujutsu.K-49.com" http://127.0.0.1/ ; echo       # web worker
+curl -s -H "Host: jujutsu.K-49.com" http://127.0.0.1/api ; echo    # API worker
+curl -s http://127.0.0.1/api                                       # tanpa domain: Empty reply
+
+# yaga
+mysql --skip-ssl -e "SELECT user, host FROM mysql.user WHERE user IN ('api','jujutsu');"
+mysql --skip-ssl -e "SHOW GRANTS FOR 'api'@'10.88.4.%';"
+mysql --skip-ssl -e "SELECT worker, COUNT(*) AS jumlah FROM \`db_shibuya_K-49\`.request_logs GROUP BY worker;"
+
+# itadori
+for ip in 10.88.4.31 10.88.4.32 10.88.4.41 10.88.4.42 10.88.4.43; do
+  echo -n "$ip -> "; curl -s -o /dev/null -w "%{http_code}\n" -H "Host: jujutsu.K-49.com" http://$ip/
+done
+```
+
+Hasil: TES 1 `status ok` dan `logged true`, TES 2 log terbaca dari `yaga`, TES 3 `Empty reply from server`. Di `yaga`, `kirara` 1, `nanami` 1, `todo` 2 baris. Dari `itadori`, kelima worker `403`.
+
+> 📸 **SS-14.1** ✅ `yaga`: user `api` dan `jujutsu`, grants `SELECT, INSERT`
+
+[![yaga grants](14/proof/14_yaga_user-grants.png)](14/proof/14_yaga_user-grants.png)
+
+> 📸 **SS-14.2** ✅ `inumaki`: user `api` dan `jujutsu` ikut tereplikasi, slave tetap `Yes`/`Yes`/`0`
+
+[![inumaki user](14/proof/14_inumaki_user-replikasi.png)](14/proof/14_inumaki_user-replikasi.png)
+
+> 📸 **SS-14.3** ✅ `panda`: vhost, `nginx -t`, curl
+
+[![panda](14/proof/14_panda_config.png)](14/proof/14_panda_config.png)
+
+> 📸 **SS-14.4** ✅ `maki`: vhost, `nginx -t`, curl
+
+[![maki](14/proof/14_maki_config.png)](14/proof/14_maki_config.png)
+
+> 📸 **SS-14.5** ✅ `nanami`: vhost API, `nginx -t`, JSON
+
+[![nanami config](14/proof/14_nanami_config.png)](14/proof/14_nanami_config.png)
+
+> 📸 **SS-14.6** ✅ `nanami`: TES 1 sampai 3
+
+[![nanami tes](14/proof/14_nanami_tes.png)](14/proof/14_nanami_tes.png)
+
+> 📸 **SS-14.7** ✅ `yaga`: log terakhir berisi baris `nanami`
+
+[![yaga log nanami](14/proof/14_yaga_log-nanami.png)](14/proof/14_yaga_log-nanami.png)
+
+> 📸 **SS-14.8** ✅ `todo`: vhost API dan `nginx -t`
+
+[![todo config](14/proof/14_todo_config.png)](14/proof/14_todo_config.png)
+
+> 📸 **SS-14.9** ✅ `todo`: TES 1 sampai 3
+
+[![todo tes](14/proof/14_todo_tes.png)](14/proof/14_todo_tes.png)
+
+> 📸 **SS-14.10** ✅ `kirara`: vhost API dan `nginx -t`
+
+[![kirara config](14/proof/14_kirara_config.png)](14/proof/14_kirara_config.png)
+
+> 📸 **SS-14.11** ✅ `kirara`: TES 1 sampai 3
+
+[![kirara tes](14/proof/14_kirara_tes.png)](14/proof/14_kirara_tes.png)
+
+> 📸 **SS-14.12** ✅ `yaga`: `GROUP BY worker`
+
+[![yaga group by](14/proof/14_yaga_group-by.png)](14/proof/14_yaga_group-by.png)
+
+> 📸 **SS-14.13** ✅ `itadori`: akses langsung ke 5 worker `403`, lewat `gojo` berhasil
+
+[![itadori 403](14/proof/14_itadori_403.png)](14/proof/14_itadori_403.png)
+
+---
+
+## Soal 15
+
+**Ringkasan.** `geto` jadi load balancer API dengan upstream `api_cluster`: `nanami` weight 3, `todo` weight 1, `kirara` `backup`. Uji 40 request dari `maki` menghasilkan 30 `nanami` dan 10 `todo` (3:1).
+
+**Konfigurasi `geto`** (`/etc/nginx/sites-enabled/api-lb`)
+
+```
+upstream api_cluster {
+    server 10.88.4.41 weight=3 max_fails=2 fail_timeout=5s;   # nanami
+    server 10.88.4.42 weight=1 max_fails=2 fail_timeout=5s;   # todo
+    server 10.88.4.43 backup;                                  # kirara
+}
+server {
+    listen 80 default_server;
+    server_name jujutsu.K-49.com www.jujutsu.K-49.com;
+    location /api {
+        proxy_pass http://api_cluster;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+**Validasi**
+
+```
+# geto
+nginx -t
+
+# maki
+for i in $(seq 1 8);  do curl -s -H 'Host: jujutsu.K-49.com' http://10.88.4.20/api | grep -o '"worker":"[a-z]*"'; done
+for i in $(seq 1 40); do curl -s -H 'Host: jujutsu.K-49.com' http://10.88.4.20/api | grep -o '"worker":"[a-z]*"'; done | sort | uniq -c
+```
+
+> 📸 **SS-15.1** ✅ `geto`: upstream `api_cluster` dan `nginx -t`
+
+[![geto upstream](15/proof/15_geto_upstream.png)](15/proof/15_geto_upstream.png)
+
+> 📸 **SS-15.2** ✅ `maki`: 8 request pertama dan hitungan 40 request (30 `nanami`, 10 `todo`)
+
+[![maki rasio](15/proof/15_maki_rasio.png)](15/proof/15_maki_rasio.png)
+
+---
+
+## Soal 16
+
+**Ringkasan.** `gojo` meneruskan `/` ke upstream `web_workers` (`maki` dan `panda`, round robin) dan `/api` ke `geto`. Dari `itadori`, `jujutsu.K-49.com` ter-resolve ke `10.88.1.10`.
+
+**Konfigurasi `gojo`** (`/etc/nginx/sites-enabled/web-proxy`)
+
+```
+upstream web_workers {
+    server 10.88.4.31;   # maki
+    server 10.88.4.32;   # panda
+}
+server {
+    listen 80 default_server;
+    server_name jujutsu.K-49.com www.jujutsu.K-49.com;
+    location /    { proxy_pass http://web_workers; ... }
+    location /api { proxy_pass http://10.88.4.20;  ... }   # geto
+}
+```
+
+**Validasi**
+
+```
+# gojo
+nginx -t
+
+# itadori
+getent hosts jujutsu.K-49.com
+for i in $(seq 1 6); do curl -s http://jujutsu.K-49.com/ | grep -o 'Dilayani oleh: [a-z]*'; done
+for i in $(seq 1 8); do curl -s http://jujutsu.K-49.com/api | grep -o '"worker":"[a-z]*"'; done
+```
+
+Hasil: `/` bergantian `maki` dan `panda`, `/api` dijawab `nanami` dan `todo`.
+
+> 📸 **SS-16.1** ✅ `gojo`: konfigurasi dan `nginx -t`
+
+[![gojo config](16/proof/16_gojo_config.png)](16/proof/16_gojo_config.png)
+
+> 📸 **SS-16.2** ✅ *(opsional)* `gojo`: konfigurasi plus uji lokal (`panda`, `maki`, `nanami`, `todo`)
+
+[![gojo uji lokal](16/proof/16_gojo_uji-lokal.png)](16/proof/16_gojo_uji-lokal.png)
+
+> 📸 **SS-16.3** ✅ `itadori`: DNS ke `10.88.1.10`, `/` bergantian, `www`, `/api`
+
+[![itadori uji](16/proof/16_itadori_uji.png)](16/proof/16_itadori_uji.png)
+
+---
+
+## Soal 17
+
+**Ringkasan.** IP asli client diteruskan sampai ke worker dan tercatat di `yaga`, tanpa bisa dipalsukan. Tiap lapisan hanya percaya header dari lapisan tepat di depannya.
+
+| Node                       | Yang dilakukan                                                                                                   |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `gojo`                     | Mengirim `X-Real-IP $remote_addr` dan `X-Forwarded-For $proxy_add_x_forwarded_for`. `X-Real-IP` selalu ditimpa dengan IP yang benar-benar terhubung. |
+| `geto`                     | `set_real_ip_from 10.88.1.10;` `real_ip_header X-Real-IP;` `real_ip_recursive off;`. Header dari sumber lain diabaikan. Ke worker: `X-Real-IP $remote_addr` dan `X-Forwarded-For "$http_x_forwarded_for, $realip_remote_addr"`. |
+| `nanami`, `todo`, `kirara` | `index.php` memakai `trusted_client_ip()`: `X-Real-IP` hanya dipercaya kalau request datang dari `geto` (`10.88.4.20`). `X-Forwarded-For` mentah tidak dipakai lagi. |
+
+`miwa` dipakai sebagai client Network 3 dengan IP manual `10.88.3.200`, hanya untuk pengujian ini.
+
+**Validasi**
+
+```
+# gojo, geto
+grep -n "X-Real-IP\|X-Forwarded-For" /etc/nginx/sites-enabled/*; nginx -t
+grep -rn "real_ip" /etc/nginx/conf.d/
+
+# worker
+php -l /var/www/api/index.php
+grep -n "trusted_client_ip" /var/www/api/index.php
+
+# itadori dan miwa
+for i in 1 2 3 4; do curl -s http://jujutsu.K-49.com/api; echo; done
+
+# uji pemalsuan
+curl -s -H 'X-Real-IP: 1.2.3.4' http://jujutsu.K-49.com/api                                   # itadori -> gojo
+curl -s -H 'Host: jujutsu.K-49.com' -H 'X-Real-IP: 1.2.3.4' http://10.88.4.20/api             # maki -> geto
+
+# yaga
+mysql --skip-ssl -e "SELECT client_ip, COUNT(*) AS jumlah FROM \`db_shibuya_K-49\`.request_logs GROUP BY client_ip;"
+```
+
+Hasil: `client` selalu IP asli (`10.88.2.12`, `10.88.3.200`, `10.88.4.31` untuk `maki`), `1.2.3.4` tidak pernah tercatat.
+
+> Baris `10.88.2.12, 10.88.1.10` dan `127.0.0.1, 10.88.1.10` di `yaga` adalah log lama sebelum `trusted_client_ip()` dipasang (15:39). Setelah itu semua baris hanya berisi satu IP.
+
+> 📸 **SS-17.1** ✅ `gojo`: header proxy dan `nginx -t`
+
+[![gojo header](17/proof/17_gojo_header.png)](17/proof/17_gojo_header.png)
+
+> 📸 **SS-17.2** ✅ `geto`: `set_real_ip_from`, `real_ip_header`, header ke worker
+
+[![geto realip](17/proof/17_geto_realip.png)](17/proof/17_geto_realip.png)
+
+> 📸 **SS-17.3** ✅ `nanami`, `todo`, `kirara`: `php -l` ok, `trusted_client_ip()` ada
+
+[![worker fungsi](17/proof/17_worker_fungsi.png)](17/proof/17_worker_fungsi.png)
+
+> 📸 **SS-17.4** 🆕 *(opsional)* isi fungsi `trusted_client_ip()` (`sed -n '1,30p' /var/www/api/index.php`)
+
+[![isi fungsi](17/proof/17_worker_isi-fungsi.png)](17/proof/17_worker_isi-fungsi.png)
+
+> 📸 **SS-17.5** ✅ `itadori`: `"client":"10.88.2.12"`
+
+[![itadori client](17/proof/17_itadori_client.png)](17/proof/17_itadori_client.png)
+
+> 📸 **SS-17.6** ✅ `miwa`: `"client":"10.88.3.200"`
+
+[![miwa client](17/proof/17_miwa_client.png)](17/proof/17_miwa_client.png)
+
+> 📸 **SS-17.7** ✅ Uji pemalsuan dari `itadori` (via `gojo`) dan `maki` (langsung ke `geto`)
+
+[![spoofing](17/proof/17_spoofing.png)](17/proof/17_spoofing.png)
+
+> 📸 **SS-17.8** ✅ `yaga`: `request_logs` dan rekap `client_ip`
+
+[![yaga client_ip](17/proof/17_yaga_client-ip.png)](17/proof/17_yaga_client-ip.png)
+
+---
+
+## Soal 18
+
+**Ringkasan.** Kalau `nanami` dan `todo` mati, `geto` otomatis memakai `kirara` (`backup`). Server utama ditandai gagal setelah `max_fails=2` dalam `fail_timeout=5s` (passive health check).
+
+**Langkah**
+
+1. Cek konfigurasi dengan `nginx -T`.
+2. Cek tiap worker langsung di `/api`: `nanami`, `todo`, `kirara-backup`.
+3. `nginx -s stop` di `nanami` dan `todo`.
+4. Dari `geto`, minta `/api` lewat proxy, harus `200` dan dijawab `kirara-backup`.
+5. Nyalakan lagi `nanami` dan `todo`.
+
+**Validasi**
+
+```
+# geto
+nginx -T 2>&1 | grep -A5 'upstream api_cluster'
+for ip in 10.88.4.41 10.88.4.42 10.88.4.43; do echo "== $ip"; curl -sS --max-time 3 http://$ip/api; echo; done
+
+# nanami dan todo
+nginx -s stop
+
+# geto (saat gagal)
+for i in 1 2 3; do curl -s --max-time 10 -H 'Host: jujutsu.K-49.com' http://127.0.0.1/api; echo; done
+
+# nanami dan todo
+nginx -t && nginx
+```
+
+> 📸 **SS-18.1** ✅ `geto`: `nginx -T`, upstream berisi `weight=3`, `weight=1`, `backup`
+
+[![geto nginx -T](18/proof/18_geto_nginx-T.png)](18/proof/18_geto_nginx-T.png)
+
+> 📸 **SS-18.2** ⚠️ `geto`: cek tiap worker. Pakai loop **terakhir** (`41` nanami, `42` todo, `43` kirara-backup). SS lama yang menampilkan `kirara-backup` untuk ketiga IP jangan dipakai.
+
+[![geto cek worker](18/proof/18_geto_cek-worker.png)](18/proof/18_geto_cek-worker.png)
+
+> 📸 **SS-18.3** ⚠️ `geto`: kondisi normal lewat proxy. SS yang ada menampilkan `kirara-backup` padahal semua worker hidup. Ambil ulang, harusnya `nanami`/`todo`.
+
+[![geto normal](18/proof/18_geto_normal.png)](18/proof/18_geto_normal.png)
+
+> 📸 **SS-18.4** ✅ `nanami` dan `todo`: `nginx -s stop`
+
+[![stop worker](18/proof/18_stop-worker.png)](18/proof/18_stop-worker.png)
+
+> 📸 **SS-18.5** ⚠️ `geto`: request saat worker utama mati. SS yang ada hanya header `200 OK` tanpa body, jadi `kirara-backup` tidak terlihat. Ambil ulang dengan body.
+
+[![geto failover](18/proof/18_geto_failover.png)](18/proof/18_geto_failover.png)
+
+---
+
+## Soal 19
+
+**Ringkasan.** `gojo` diberi proxy cache 10 menit untuk `/` dan rate limit 10 request per detik per IP untuk `/api` (zona `api_limit`). Rate limit terbukti: dari 40 request cepat, 14 lolos (`200`) dan 26 ditolak (`429`). Cache belum terbukti di SS yang ada (lihat peringatan).
+
+**Konfigurasi** (di `gojo`)
+
+```
+proxy_cache_path /var/cache/nginx/web levels=1:2 keys_zone=web_cache:10m inactive=10m;
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+
+# location /
+proxy_cache web_cache;
+proxy_cache_valid 200 10m;
+add_header X-Cache-Status $upstream_cache_status;
+
+# location /api
+limit_req zone=api_limit burst=10 nodelay;
+limit_req_status 429;
+```
+
+<!-- Sesuaikan path cache, nama zona cache, dan nilai burst dengan konfigurasi aslinya. Dari error log, nilai excess sekitar 10. -->
+
+**Validasi**
+
+```
+nginx -t; service nginx status
+grep -rnE "proxy_cache|limit_req|X-Cache-Status" /etc/nginx/nginx.conf /etc/nginx/conf.d /etc/nginx/sites-enabled
+
+# cache
+for i in 1 2; do echo "== $i"; curl -s -D - -o /dev/null -H 'Host: jujutsu.K-49.com' http://127.0.0.1/ | grep -Ei 'HTTP/|X-Cache-Status'; done
+
+# rate limit
+for i in $(seq 1 40); do curl -s -o /dev/null -w "%{http_code}\n" -H 'Host: jujutsu.K-49.com' http://127.0.0.1/api; done | sort | uniq -c
+
+# log
+grep "limiting requests" /var/log/nginx/error.log | tail -n 15
+```
+
+> 📸 **SS-19.1** ✅ `gojo`: `nginx -t` dan `nginx is running`
+
+[![gojo nginx -t](19/proof/19_gojo_nginx-t.png)](19/proof/19_gojo_nginx-t.png)
+
+> 📸 **SS-19.2** 🆕 `gojo`: isi konfigurasi `proxy_cache` dan `limit_req` (perintah `grep` di atas)
+
+[![gojo config](19/proof/19_gojo_config.png)](19/proof/19_gojo_config.png)
+
+> 📸 **SS-19.3** ⚠️ `gojo`: uji cache. SS yang ada menampilkan `502 Bad Gateway` dan `MISS` dua kali, belum `MISS` lalu `HIT`. Perbaiki upstream dulu (cek `tail /var/log/nginx/error.log` di `gojo`, lalu `curl` ke `10.88.4.31` dan `10.88.4.32`, dan `service nginx status` di `maki`/`panda`), baru ulangi.
+
+[![gojo cache](19/proof/19_gojo_cache.png)](19/proof/19_gojo_cache.png)
+
+> 📸 **SS-19.4** ✅ `gojo`: 40 request ke `/api`, `14` x `200` dan `26` x `429`
+
+[![gojo rate limit](19/proof/19_gojo_rate-limit.png)](19/proof/19_gojo_rate-limit.png)
+
+> 📸 **SS-19.5** ✅ `gojo`: error log `limiting requests ... zone "api_limit"`
+
+[![gojo error log](19/proof/19_gojo_error-log.png)](19/proof/19_gojo_error-log.png)
+
+---
+
+## Soal 20
+
+**Ringkasan.** `kusakabe` (Network 3) menjalankan Apache Benchmark ke `gojo` untuk `/` dan `/api`, masing-masing 600 request, concurrency 30.
+
+**Validasi**
+
+```
+# kusakabe
+ab -n 600 -c 30 -H 'Host: jujutsu.K-49.com' http://10.88.1.10/
+ab -n 600 -c 30 -H 'Host: jujutsu.K-49.com' http://10.88.1.10/api
+
+# gojo
+tail -n 50 /var/log/nginx/access.log
+```
+
+**Hasil** (dari output `ab` di SS)
+
+| Parameter           | `/`          | `/api`       |
+| ------------------- | ------------ | ------------ |
+| Total request       | 600          | 600          |
+| Concurrency         | 30           | 30           |
+| Waktu uji           | 0,128 s      | 0,130 s      |
+| Requests per second | 4670,90      | 4630,74      |
+| Waktu per request   | 6,423 ms     | 6,478 ms     |
+| Failed requests     | 0            | 597 (Length) |
+| Non-2xx             | 600          | 588          |
+| Respons 2xx         | 0            | 12           |
+
+**Analisis**
+
+- **`/`**: seluruh 600 respons non-2xx. Access log `gojo` menunjukkan `502`, artinya upstream frontend (`maki`/`panda`) tidak menjawab. Throughput tinggi di sini hanya kecepatan membalas error, bukan kinerja sebenarnya.
+- **`/api`**: hanya 12 request sukses, 588 ditolak `429` oleh rate limit. Angka 12 sejalan dengan hasil soal 19 (14 sukses dari 40).
+- **`Failed requests` 597** bukan kegagalan koneksi. `ab` menghitungnya gagal karena panjang body beda dari respons pertama (`200` sekitar 32 sampai 34 byte, `429` 162 byte).
+- **Kesimpulan**: rate limiting bekerja dan menahan lonjakan request ke API. Benchmark `/` belum valid sampai `502` diperbaiki.
+
+> Angka di tabel ini mengikuti screenshot. Kalau mau memakai angka lain (misalnya 4522,53 dan 4302,65 req/s), lampirkan SS run yang sesuai.
+
+> 📸 **SS-20.1** ⚠️ `kusakabe`: `ab` ke `/`. Hasil sekarang semuanya `502`. Ulangi setelah soal 19 diperbaiki.
+
+[![ab root](20/proof/20_kusakabe_ab-root.png)](20/proof/20_kusakabe_ab-root.png)
+
+> 📸 **SS-20.2** ✅ `kusakabe`: `ab` ke `/api`
+
+[![ab api](20/proof/20_kusakabe_ab-api.png)](20/proof/20_kusakabe_ab-api.png)
+
+> 📸 **SS-20.3** ✅ `gojo`: access log (`429` dari `ApacheBench` dan `200` dari `curl`)
+
+[![gojo access log](20/proof/20_gojo_access-log.png)](20/proof/20_gojo_access-log.png)
+
+---
+
+## Daftar SS
+
+| Status | SS                                                                                                   |
+| ------ | ---------------------------------------------------------------------------------------------------- |
+| 🆕     | 12.3, 12.4, 17.4 (opsional), 19.2                                                                    |
+| ⚠️     | 18.2, 18.3, 18.5, 19.3, 20.1                                                                         |
+| ✅     | 12.1, 12.2, 13.1 sampai 13.4, 14.1 sampai 14.13, 15.1, 15.2, 16.1 sampai 16.3, 17.1 sampai 17.3, 17.5 sampai 17.8, 18.1, 18.4, 19.1, 19.4, 19.5, 20.2, 20.3 |
 ## Struktur repository
 
 ```text
