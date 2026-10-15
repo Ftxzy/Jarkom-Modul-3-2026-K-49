@@ -950,21 +950,9 @@ ping -c 3 google.com
 
 <img width="431" height="223" alt="image" src="https://github.com/user-attachments/assets/96c5383a-e0e6-4234-8efb-7442dfe2503a" />
 
-[![utahime](12/proof/12_utahime_validasi-dns.png)](12/proof/12_utahime_validasi-dns.png)
+ **SS-12.2** `shoko`: zona tersalin, SOA, A, CNAME, PTR, google.com
 
-> 📸 **SS-12.2** ✅ `shoko`: zona tersalin, SOA, A, CNAME, PTR, google.com
-
-[![shoko](12/proof/12_shoko_validasi-slave.png)](12/proof/12_shoko_validasi-slave.png)
-
-> 📸 **SS-12.3** 🆕 client: `dig` ke `@10.88.1.2` dan `@10.88.1.3` (SOA, A, CNAME, PTR)
-
-[![client dig](12/proof/12_client_dig-kedua-server.png)](12/proof/12_client_dig-kedua-server.png)
-
-> 📸 **SS-12.4** 🆕 client: `ping google.com` berhasil
-
-[![client ping](12/proof/12_client_ping-google.png)](12/proof/12_client_ping-google.png)
-
----
+<img width="437" height="205" alt="image" src="https://github.com/user-attachments/assets/2c5562d2-1e04-4b73-89d0-a8ead87d4eeb" />
 
 ## Soal 13
 
@@ -997,21 +985,30 @@ mysql -h 10.88.4.52 -u jujutsu -p -e "SHOW DATABASES;"
 
 Hasil: `Slave_IO_Running: Yes`, `Slave_SQL_Running: Yes`, `Seconds_Behind_Master: 0`, dan `inumaki` berisi dua baris (`uji-replikasi`, `uji-replikasi-2`).
 
-> 📸 **SS-13.1** ✅ `yaga`: master status, daftar database, tabel `request_logs`
+ **SS-13.1** `yaga`: master status, daftar database, tabel `request_logs`
+ 
+<img width="385" height="223" alt="image" src="https://github.com/user-attachments/assets/a554f710-1ef8-4ba5-84a0-ab54178b6cab" />
 
-[![yaga master](13/proof/13_yaga_master-status.png)](13/proof/13_yaga_master-status.png)
+>  **SS-13.2** `yaga`: insert `uji-replikasi` dan select
 
-> 📸 **SS-13.2** ✅ `yaga`: insert `uji-replikasi` dan select
+<img width="443" height="260" alt="image" src="https://github.com/user-attachments/assets/5f04d1dd-d325-4b04-8a38-695c447c322f" />
 
-[![yaga insert](13/proof/13_yaga_insert-uji.png)](13/proof/13_yaga_insert-uji.png)
+yaga sudah beres, dan screenshot-nya menunjukkan semuanya sesuai:
+- IP yaga = 10.88.4.51.
+- MariaDB 11.8 terpasang, perintah mysql ada.
+- Database db_shibuya_K-49 sudah ada.
+- Binary log aktif: mysql-bin.000001, posisi 1974.
 
-> 📸 **SS-13.3** ✅ `inumaki`: status slave dan 2 baris tabel (pakai SS yang perintahnya terlihat)
 
-[![inumaki slave](13/proof/13_inumaki_slave-status.png)](13/proof/13_inumaki_slave-status.png)
+> **SS-13.3**  `inumaki`: status slave dan 2 baris tabel (pakai SS yang perintahnya terlihat)
 
-> 📸 **SS-13.4** ✅ `tengen`: akses remote `jujutsu` ke kedua database
+<img width="437" height="253" alt="image" src="https://github.com/user-attachments/assets/e54c44e1-8908-4ba3-9ec3-c55a01eeb605" />
+<img width="436" height="186" alt="image" src="https://github.com/user-attachments/assets/6605d39f-c413-4b1f-adeb-4ca3aa671885" />
 
-[![tengen remote](13/proof/13_tengen_akses-remote.png)](13/proof/13_tengen_akses-remote.png)
+
+>  **SS-13.4** `tengen`: akses remote `jujutsu` ke kedua database
+> 
+<img width="427" height="263" alt="image" src="https://github.com/user-attachments/assets/3d400ba0-a1ba-46a6-bbe8-d30dd6be2f85" />
 
 ---
 
@@ -1051,57 +1048,79 @@ done
 
 Hasil: TES 1 `status ok` dan `logged true`, TES 2 log terbaca dari `yaga`, TES 3 `Empty reply from server`. Di `yaga`, `kirara` 1, `nanami` 1, `todo` 2 baris. Dari `itadori`, kelima worker `403`.
 
-> 📸 **SS-14.1** ✅ `yaga`: user `api` dan `jujutsu`, grants `SELECT, INSERT`
+> **SS-14.1**  `yaga`: user `api` dan `jujutsu`, grants `SELECT, INSERT`
 
-[![yaga grants](14/proof/14_yaga_user-grants.png)](14/proof/14_yaga_user-grants.png)
+<img width="408" height="245" alt="image" src="https://github.com/user-attachments/assets/a77988ec-a0bd-4a64-842a-28359c8b7072" />
 
-> 📸 **SS-14.2** ✅ `inumaki`: user `api` dan `jujutsu` ikut tereplikasi, slave tetap `Yes`/`Yes`/`0`
+Hak user api sudah benar. Layar yaga menunjukkan:
+- api@10.88.4.% dan jujutsu@10.88.4.% sama-sama ada.
+- GRANT SELECT, INSERT ON db_shibuya_K-49.request_logs TO api@10.88.4.%, jadi API bisa menulis log ke tabel itu dan tidak punya hak lain.
 
-[![inumaki user](14/proof/14_inumaki_user-replikasi.png)](14/proof/14_inumaki_user-replikasi.png)
+> **SS-14.2**  `inumaki`: user `api` dan `jujutsu` ikut tereplikasi, slave tetap `Yes`/`Yes`/`0`
 
-> 📸 **SS-14.3** ✅ `panda`: vhost, `nginx -t`, curl
+<img width="410" height="239" alt="image" src="https://github.com/user-attachments/assets/99dcae4f-da01-4ac8-8f04-cf4b08443a8a" />
 
-[![panda](14/proof/14_panda_config.png)](14/proof/14_panda_config.png)
+> **SS-14.3**  `panda`: vhost, `nginx -t`, curl
+> 
+<img width="416" height="336" alt="image" src="https://github.com/user-attachments/assets/e35ffdee-8a96-4e10-846c-2576d25ed2c4" />
 
-> 📸 **SS-14.4** ✅ `maki`: vhost, `nginx -t`, curl
+> **SS-14.4**  `maki`: vhost, `nginx -t`, curl
 
-[![maki](14/proof/14_maki_config.png)](14/proof/14_maki_config.png)
+<img width="389" height="284" alt="image" src="https://github.com/user-attachments/assets/4b00f1b9-a8d7-47f0-89ff-20b25576785e" />
 
-> 📸 **SS-14.5** ✅ `nanami`: vhost API, `nginx -t`, JSON
+>  **SS-14.5** `nanami`: vhost API, `nginx -t`, JSON
 
-[![nanami config](14/proof/14_nanami_config.png)](14/proof/14_nanami_config.png)
+<img width="397" height="266" alt="image" src="https://github.com/user-attachments/assets/8d2c2fd7-2389-4214-b790-7e41d858190c" />
 
-> 📸 **SS-14.6** ✅ `nanami`: TES 1 sampai 3
+> **SS-14.6**  `nanami`: TES 1 sampai 3
 
-[![nanami tes](14/proof/14_nanami_tes.png)](14/proof/14_nanami_tes.png)
+<img width="406" height="244" alt="image" src="https://github.com/user-attachments/assets/3ac5d8fb-b76e-46e1-b657-087dfec6f259" />
 
-> 📸 **SS-14.7** ✅ `yaga`: log terakhir berisi baris `nanami`
+Hasil yang benar
+- Tes 1: JSON dengan "status":"ok", "worker":"nanami", "logged":true.
+- Tes 2: JSON berisi daftar logs, minimal ada baris dari tes 1.
+- Tes 3: Empty reply from server.
 
-[![yaga log nanami](14/proof/14_yaga_log-nanami.png)](14/proof/14_yaga_log-nanami.png)
 
-> 📸 **SS-14.8** ✅ `todo`: vhost API dan `nginx -t`
+> **SS-14.7**  `yaga`: log terakhir berisi baris `nanami`
 
-[![todo config](14/proof/14_todo_config.png)](14/proof/14_todo_config.png)
+<img width="413" height="245" alt="image" src="https://github.com/user-attachments/assets/77ff04cd-828c-4319-90a1-5e2e2d86cd34" />
 
-> 📸 **SS-14.9** ✅ `todo`: TES 1 sampai 3
 
-[![todo tes](14/proof/14_todo_tes.png)](14/proof/14_todo_tes.png)
+>  **SS-14.8** `todo`: vhost API dan `nginx -t`
 
-> 📸 **SS-14.10** ✅ `kirara`: vhost API dan `nginx -t`
+<img width="419" height="251" alt="image" src="https://github.com/user-attachments/assets/71a0cf97-becd-4dee-b05e-5bbe560c872a" />
 
-[![kirara config](14/proof/14_kirara_config.png)](14/proof/14_kirara_config.png)
+Nginx dan PHP-FPM berjalan di todo sebagai worker API. Virtual host merespons domain jujutsu.K-49.com dan www.jujutsu.K-49.com, endpoint /api menjawab JSON dengan "worker":"todo" dan "logged":true. Akses langsung dibatasi hanya dari geto (10.88.4.20) dan localhost, selain itu deny all. nginx -t sukses.
 
-> 📸 **SS-14.11** ✅ `kirara`: TES 1 sampai 3
+> **SS-14.9**  `todo`: TES 1 sampai 3
 
-[![kirara tes](14/proof/14_kirara_tes.png)](14/proof/14_kirara_tes.png)
+<img width="406" height="239" alt="image" src="https://github.com/user-attachments/assets/f1474354-e26d-4ede-b2ee-80d4d7fcaa6e" />
 
-> 📸 **SS-14.12** ✅ `yaga`: `GROUP BY worker`
 
-[![yaga group by](14/proof/14_yaga_group-by.png)](14/proof/14_yaga_group-by.png)
+>  **SS-14.10** `kirara`: vhost API dan `nginx -t`
 
-> 📸 **SS-14.13** ✅ `itadori`: akses langsung ke 5 worker `403`, lewat `gojo` berhasil
+<img width="421" height="251" alt="image" src="https://github.com/user-attachments/assets/8d7f56c5-280a-49c6-8e84-4228843091f9" />
 
-[![itadori 403](14/proof/14_itadori_403.png)](14/proof/14_itadori_403.png)
+Nginx dan PHP-FPM berjalan di kirara sebagai worker API cadangan. Virtual host merespons domain jujutsu.K-49.com dan www.jujutsu.K-49.com, endpoint /api menjawab JSON dengan "worker":"kirara" dan "logged":true. Akses langsung dibatasi hanya dari geto (10.88.4.20) dan localhost, selain itu deny all. nginx -t sukses. 
+
+
+>  **SS-14.11**  `kirara`: TES 1 sampai 3
+
+<img width="408" height="238" alt="image" src="https://github.com/user-attachments/assets/89939567-068b-43d0-ac2e-5070e8219352" />
+
+
+>  **SS-14.12**  `yaga`: `GROUP BY worker`
+
+<img width="413" height="101" alt="image" src="https://github.com/user-attachments/assets/7f8a22fc-579d-4eb9-9885-feb0772c8371" />
+
+
+>  **SS-14.13** `itadori`: akses langsung ke 5 worker `403`, lewat `gojo` berhasil
+
+<img width="409" height="316" alt="image" src="https://github.com/user-attachments/assets/98aaca65-dbbe-4d3f-a2fe-d21c1c034c76" />
+
+Client Network 2 (IP 10.88.2.12, gateway 10.88.2.1) mengakses langsung seluruh worker (maki, panda, nanami, todo, kirara) dan semuanya ditolak dengan status 403 Forbidden. Akses melalui reverse proxy gojo berhasil: halaman web dijawab bergantian oleh maki dan panda, sedangkan /api dijawab oleh nanami dan todo melalui geto dengan rasio sekitar 3:1. 
+
 
 ---
 
@@ -1140,13 +1159,18 @@ for i in $(seq 1 8);  do curl -s -H 'Host: jujutsu.K-49.com' http://10.88.4.20/a
 for i in $(seq 1 40); do curl -s -H 'Host: jujutsu.K-49.com' http://10.88.4.20/api | grep -o '"worker":"[a-z]*"'; done | sort | uniq -c
 ```
 
-> 📸 **SS-15.1** ✅ `geto`: upstream `api_cluster` dan `nginx -t`
+>  **SS-15.1** `geto`: upstream `api_cluster` dan `nginx -t`
 
-[![geto upstream](15/proof/15_geto_upstream.png)](15/proof/15_geto_upstream.png)
+<img width="408" height="205" alt="image" src="https://github.com/user-attachments/assets/a3781c6f-7214-4087-aef2-8b0576c1cbca" />
 
-> 📸 **SS-15.2** ✅ `maki`: 8 request pertama dan hitungan 40 request (30 `nanami`, 10 `todo`)
+Nginx pada geto dikonfigurasi sebagai Load Balancer internal dengan upstream api_cluster yang mengarah ke nanami (weight=3) dan todo (weight=1) menggunakan algoritma Weighted Round Robin. nginx -t berhasil. 
 
-[![maki rasio](15/proof/15_maki_rasio.png)](15/proof/15_maki_rasio.png)
+
+>  **SS-15.2**  `maki`: 8 request pertama dan hitungan 40 request (30 `nanami`, 10 `todo`)
+
+<img width="397" height="242" alt="image" src="https://github.com/user-attachments/assets/28dbdbd4-1b82-457a-9147-e387506c902c" />
+
+Dari node maki di jaringan lokal Data Center dikirim 40 request ke geto (10.88.4.20/api). Hasilnya nanami menjawab 30 kali dan todo 10 kali, rasio 3:1 sesuai weight pada upstream api_cluster. 
 
 ---
 
@@ -1183,17 +1207,18 @@ for i in $(seq 1 8); do curl -s http://jujutsu.K-49.com/api | grep -o '"worker":
 
 Hasil: `/` bergantian `maki` dan `panda`, `/api` dijawab `nanami` dan `todo`.
 
-> 📸 **SS-16.1** ✅ `gojo`: konfigurasi dan `nginx -t`
+> **SS-16.1**  `gojo`: konfigurasi dan `nginx -t`
 
-[![gojo config](16/proof/16_gojo_config.png)](16/proof/16_gojo_config.png)
+<img width="405" height="233" alt="image" src="https://github.com/user-attachments/assets/a67a6468-0906-4ea3-9d7e-c1d19827c24b" />
 
-> 📸 **SS-16.2** ✅ *(opsional)* `gojo`: konfigurasi plus uji lokal (`panda`, `maki`, `nanami`, `todo`)
+Nginx pada gojo melayani jujutsu.K-49.com dan www.jujutsu.K-49.com dengan Path-Based Routing. Request / diteruskan secara Round Robin ke upstream web_workers (maki 10.88.4.31 dan panda 10.88.4.32), sedangkan request /api diteruskan ke geto (10.88.4.20). nginx -t berhasil. 
 
-[![gojo uji lokal](16/proof/16_gojo_uji-lokal.png)](16/proof/16_gojo_uji-lokal.png)
+>  **SS-16.3** `itadori`: DNS ke `10.88.1.10`, `/` bergantian, `www`, `/api`
 
-> 📸 **SS-16.3** ✅ `itadori`: DNS ke `10.88.1.10`, `/` bergantian, `www`, `/api`
+<img width="413" height="286" alt="image" src="https://github.com/user-attachments/assets/1e5c6db0-9cc9-4fb4-af95-3c02b66e2708" />
 
-[![itadori uji](16/proof/16_itadori_uji.png)](16/proof/16_itadori_uji.png)
+ Dari client Divisi A (10.88.2.12), domain jujutsu.K-49.com ter-resolve ke gojo (10.88.1.10). Akses ke / dan www dijawab bergantian oleh maki dan panda (Round Robin), sedangkan akses ke /api diteruskan melalui geto dan dijawab oleh nanami/todo. 
+
 
 ---
 
@@ -1235,37 +1260,46 @@ Hasil: `client` selalu IP asli (`10.88.2.12`, `10.88.3.200`, `10.88.4.31` untuk 
 
 > Baris `10.88.2.12, 10.88.1.10` dan `127.0.0.1, 10.88.1.10` di `yaga` adalah log lama sebelum `trusted_client_ip()` dipasang (15:39). Setelah itu semua baris hanya berisi satu IP.
 
-> 📸 **SS-17.1** ✅ `gojo`: header proxy dan `nginx -t`
+>  **SS-17.1**  `gojo`: header proxy dan `nginx -t`
 
-[![gojo header](17/proof/17_gojo_header.png)](17/proof/17_gojo_header.png)
+<img width="414" height="141" alt="image" src="https://github.com/user-attachments/assets/7fc493f1-c9a0-45a8-8f4f-59a5deb3d88d" />
 
-> 📸 **SS-17.2** ✅ `geto`: `set_real_ip_from`, `real_ip_header`, header ke worker
+Nginx gojo meneruskan IP klien lewat header X-Real-IP (remoteaddr)danX-Forwarded-For(proxy_add_x_forwarded_for) ke worker web dan geto. 
 
-[![geto realip](17/proof/17_geto_realip.png)](17/proof/17_geto_realip.png)
+>  **SS-17.2** `geto`: `set_real_ip_from`, `real_ip_header`, header ke worker
 
-> 📸 **SS-17.3** ✅ `nanami`, `todo`, `kirara`: `php -l` ok, `trusted_client_ip()` ada
+<img width="413" height="176" alt="image" src="https://github.com/user-attachments/assets/429ef784-e081-43e2-9f4e-906f466f8b7b" />
 
-[![worker fungsi](17/proof/17_worker_fungsi.png)](17/proof/17_worker_fungsi.png)
+geto hanya mempercayai X-Real-IP dari proxy terpercaya gojo (set_real_ip_from 10.88.1.10). Header dari sumber lain diabaikan, sehingga $remote_addr di geto menjadi IP klien asli. X-Forwarded-For diteruskan sebagai rantai IP klien dan IP proxy pengirim. 
 
-> 📸 **SS-17.4** 🆕 *(opsional)* isi fungsi `trusted_client_ip()` (`sed -n '1,30p' /var/www/api/index.php`)
+>  **SS-17.3**  `nanami`, `todo`, `kirara`: `php -l` ok, `trusted_client_ip()` ada
 
-[![isi fungsi](17/proof/17_worker_isi-fungsi.png)](17/proof/17_worker_isi-fungsi.png)
+<img width="410" height="433" alt="image" src="https://github.com/user-attachments/assets/6030abd6-3537-4c85-86d7-9a25b7eaf31b" />
 
-> 📸 **SS-17.5** ✅ `itadori`: `"client":"10.88.2.12"`
+> `itadori`: `"client":"10.88.2.12"`
 
-[![itadori client](17/proof/17_itadori_client.png)](17/proof/17_itadori_client.png)
+<img width="415" height="144" alt="image" src="https://github.com/user-attachments/assets/957cd9c6-d7f9-4b1f-8f67-f023565f46f3" />
 
-> 📸 **SS-17.6** ✅ `miwa`: `"client":"10.88.3.200"`
+> 4 respons JSON dengan "client":"10.88.2.12".
+> request ke /api lewat gojo → geto → worker. Respons menunjukkan IP asli client Network 2 (10.88.2.12), bukan IP gojo atau geto. 
 
-[![miwa client](17/proof/17_miwa_client.png)](17/proof/17_miwa_client.png)
+> `miwa`: `"client":"10.88.3.200"`
 
-> 📸 **SS-17.7** ✅ Uji pemalsuan dari `itadori` (via `gojo`) dan `maki` (langsung ke `geto`)
+<img width="407" height="143" alt="image" src="https://github.com/user-attachments/assets/e8e1e1b3-c5ce-430c-aabf-f5fe0bbd063b" />
 
-[![spoofing](17/proof/17_spoofing.png)](17/proof/17_spoofing.png)
+> client miwa (Network 3): request ke /api lewat gojo → geto → worker. Respons menunjukkan IP asli client Network 3 (10.88.3.200), bukan IP gojo atau geto. IP diset manual karena client tidak memiliki klien DHCP, dan hanya untuk pengujian soal ini.
 
-> 📸 **SS-17.8** ✅ `yaga`: `request_logs` dan rekap `client_ip`
+> Uji pemalsuan dari `itadori` (via `gojo`) dan `maki` (langsung ke `geto`)
 
-[![yaga client_ip](17/proof/17_yaga_client-ip.png)](17/proof/17_yaga_client-ip.png)
+<img width="424" height="245" alt="image" src="https://github.com/user-attachments/assets/95fb8df5-ff9d-4311-9c52-f98ef4ee3331" />
+
+> uji spoofing: header X-Real-IP palsu dari sumber tidak terpercaya (maki) diabaikan geto. Header palsu dari client lewat gojo juga ditimpa gojo dengan IP asli. Alamat yang tercatat tetap IP asli. 
+
+>  `yaga`: `request_logs` dan rekap `client_ip`
+
+<img width="407" height="316" alt="image" src="https://github.com/user-attachments/assets/a5c61ad1-6808-4d34-8216-6fcbd0c52c4b" />
+
+tabel request_logs mencatat client_ip sesuai IP klien asal (Network 2 dan Network 3), bukan IP gojo atau geto. Header palsu (1.2.3.4) tidak pernah tercatat. 
 
 ---
 
@@ -1298,25 +1332,26 @@ for i in 1 2 3; do curl -s --max-time 10 -H 'Host: jujutsu.K-49.com' http://127.
 nginx -t && nginx
 ```
 
-> 📸 **SS-18.1** ✅ `geto`: `nginx -T`, upstream berisi `weight=3`, `weight=1`, `backup`
+> `geto`: `nginx -T`, upstream berisi `weight=3`, `weight=1`, `backup`
 
-[![geto nginx -T](18/proof/18_geto_nginx-T.png)](18/proof/18_geto_nginx-T.png)
+<img width="409" height="105" alt="image" src="https://github.com/user-attachments/assets/baac8ff3-8b64-477f-baf7-6e8c4b14c9da" />
 
-> 📸 **SS-18.2** ⚠️ `geto`: cek tiap worker. Pakai loop **terakhir** (`41` nanami, `42` todo, `43` kirara-backup). SS lama yang menampilkan `kirara-backup` untuk ketiga IP jangan dipakai.
+Konfigurasi upstream api_cluster menggunakan Nanami dan Todo sebagai server utama dengan bobot 3:1, serta Kirara sebagai server cadangan (backup). Server utama memakai max_fails=2 dan fail_timeout=5s. 
 
-[![geto cek worker](18/proof/18_geto_cek-worker.png)](18/proof/18_geto_cek-worker.png)
+> Pengujian konektivitas memastikan ketiga worker dapat diakses melalui endpoint /api dan memberikan respons HTTP 200 OK. 
 
-> 📸 **SS-18.3** ⚠️ `geto`: kondisi normal lewat proxy. SS yang ada menampilkan `kirara-backup` padahal semua worker hidup. Ambil ulang, harusnya `nanami`/`todo`.
+<img width="410" height="262" alt="image" src="https://github.com/user-attachments/assets/c860e3a3-d1cf-4249-a6e0-bb807cfd0022" />
 
-[![geto normal](18/proof/18_geto_normal.png)](18/proof/18_geto_normal.png)
+> Permintaan API melalui reverse proxy Geto diteruskan ke upstream sesuai konfigurasi Nginx. Respons berhasil menunjukkan layanan dapat dijangkau melalui proxy.
 
-> 📸 **SS-18.4** ✅ `nanami` dan `todo`: `nginx -s stop`
+<img width="398" height="104" alt="image" src="https://github.com/user-attachments/assets/97257836-3815-4f5e-be6c-35f4179d4d46" />
 
-[![stop worker](18/proof/18_stop-worker.png)](18/proof/18_stop-worker.png)
+> `nanami` dan `todo`: `nginx -s stop`
+> Pengujian failover dilakukan dengan menghentikan layanan Nginx pada server utama Nanami dan Todo. Setelah kedua server tidak tersedia, permintaan API dikirim melalui Geto. Hasil pengujian menunjukkan respons HTTP 200 OK dengan pesan kirara-backup, yang membuktikan bahwa Nginx berhasil mengalihkan permintaan ke Kirara sebagai server cadangan. Dengan demikian, layanan API tetap dapat diakses meskipun kedua server utama mengalami kegagalan.
 
-> 📸 **SS-18.5** ⚠️ `geto`: request saat worker utama mati. SS yang ada hanya header `200 OK` tanpa body, jadi `kirara-backup` tidak terlihat. Ambil ulang dengan body.
+<img width="415" height="308" alt="image" src="https://github.com/user-attachments/assets/27b2d7d7-c9e4-47e2-be49-e356a316c04d" />
 
-[![geto failover](18/proof/18_geto_failover.png)](18/proof/18_geto_failover.png)
+<img width="407" height="166" alt="image" src="https://github.com/user-attachments/assets/baef0f98-566f-42ba-83ae-62879000d7d2" />
 
 ---
 
@@ -1358,25 +1393,28 @@ for i in $(seq 1 40); do curl -s -o /dev/null -w "%{http_code}\n" -H 'Host: juju
 grep "limiting requests" /var/log/nginx/error.log | tail -n 15
 ```
 
-> 📸 **SS-19.1** ✅ `gojo`: `nginx -t` dan `nginx is running`
+> `gojo`: `nginx -t` dan `nginx is running`
+> Konfigurasi Nginx pada Gojo berhasil divalidasi dan layanan berjalan. Konfigurasi mencakup reverse proxy frontend, proxy caching dengan masa berlaku 10 menit, serta rate limiting pada endpoint /api sebesar 10 request per detik per IP klien.
 
-[![gojo nginx -t](19/proof/19_gojo_nginx-t.png)](19/proof/19_gojo_nginx-t.png)
+<img width="413" height="75" alt="image" src="https://github.com/user-attachments/assets/33bc806b-d96c-49ad-bfa7-1d081683c842" />
 
-> 📸 **SS-19.2** 🆕 `gojo`: isi konfigurasi `proxy_cache` dan `limit_req` (perintah `grep` di atas)
+> Gojo (proxy caching): Pengujian menunjukkan request pertama ke halaman frontend menghasilkan status cache MISS, sedangkan request berikutnya menghasilkan HIT. 
 
-[![gojo config](19/proof/19_gojo_config.png)](19/proof/19_gojo_config.png)
+<img width="406" height="179" alt="image" src="https://github.com/user-attachments/assets/8402dfde-1043-4f9d-b698-1b8a594c3329" />
 
-> 📸 **SS-19.3** ⚠️ `gojo`: uji cache. SS yang ada menampilkan `502 Bad Gateway` dan `MISS` dua kali, belum `MISS` lalu `HIT`. Perbaiki upstream dulu (cek `tail /var/log/nginx/error.log` di `gojo`, lalu `curl` ke `10.88.4.31` dan `10.88.4.32`, dan `service nginx status` di `maki`/`panda`), baru ulangi.
+Hal ini membuktikan bahwa respons yang memenuhi syarat cache disimpan dan dapat digunakan kembali selama masa berlaku cache 10 menit.
 
-[![gojo cache](19/proof/19_gojo_cache.png)](19/proof/19_gojo_cache.png)
+> Gojo (rate limiting): Pengujian dilakukan dengan mengirimkan 40 request berturut-turut ke endpoint /api melalui reverse proxy Gojo. Respons HTTP 429 Too Many Requests menunjukkan bahwa request yang melampaui batas yang diizinkan ditolak oleh mekanisme rate limiting.
 
-> 📸 **SS-19.4** ✅ `gojo`: 40 request ke `/api`, `14` x `200` dan `26` x `429`
+> `gojo`: 40 request ke `/api`, `14` x `200` dan `26` x `429`
 
-[![gojo rate limit](19/proof/19_gojo_rate-limit.png)](19/proof/19_gojo_rate-limit.png)
+<img width="376" height="105" alt="image" src="https://github.com/user-attachments/assets/a43f7bb3-0ea0-4e07-aef4-555389e01fdd" />
 
-> 📸 **SS-19.5** ✅ `gojo`: error log `limiting requests ... zone "api_limit"`
+> `gojo`: error log `limiting requests ... zone "api_limit"`
 
-[![gojo error log](19/proof/19_gojo_error-log.png)](19/proof/19_gojo_error-log.png)
+<img width="407" height="376" alt="image" src="https://github.com/user-attachments/assets/9c94402c-50bb-4040-ad7b-a70292fa7c62" />
+
+Gojo (analisis log): Access log dan error log Nginx diperiksa untuk mengidentifikasi request yang diteruskan ke layanan backend serta request yang ditolak oleh kebijakan rate limiting. Log digunakan sebagai bukti pendukung hasil pengujian.
 
 ---
 
@@ -1415,29 +1453,28 @@ tail -n 50 /var/log/nginx/access.log
 - **`Failed requests` 597** bukan kegagalan koneksi. `ab` menghitungnya gagal karena panjang body beda dari respons pertama (`200` sekitar 32 sampai 34 byte, `429` 162 byte).
 - **Kesimpulan**: rate limiting bekerja dan menahan lonjakan request ke API. Benchmark `/` belum valid sampai `502` diperbaiki.
 
-> Angka di tabel ini mengikuti screenshot. Kalau mau memakai angka lain (misalnya 4522,53 dan 4302,65 req/s), lampirkan SS run yang sesuai.
 
-> 📸 **SS-20.1** ⚠️ `kusakabe`: `ab` ke `/`. Hasil sekarang semuanya `502`. Ulangi setelah soal 19 diperbaiki.
+> `kusakabe`: `ab` ke `/`.
 
-[![ab root](20/proof/20_kusakabe_ab-root.png)](20/proof/20_kusakabe_ab-root.png)
+<img width="442" height="380" alt="image" src="https://github.com/user-attachments/assets/42e5d630-a62e-48ac-804f-b4fd6815f195" />
 
-> 📸 **SS-20.2** ✅ `kusakabe`: `ab` ke `/api`
+Hasil benchmark Apache Benchmark pada endpoint / dengan 600 request dan concurrency 30. 
 
-[![ab api](20/proof/20_kusakabe_ab-api.png)](20/proof/20_kusakabe_ab-api.png)
+> `kusakabe`: `ab` ke `/api`
 
-> 📸 **SS-20.3** ✅ `gojo`: access log (`429` dari `ApacheBench` dan `200` dari `curl`)
+<img width="436" height="392" alt="image" src="https://github.com/user-attachments/assets/ce9206e2-45c2-40cd-9098-1f632a3eccd5" />
 
-[![gojo access log](20/proof/20_gojo_access-log.png)](20/proof/20_gojo_access-log.png)
+Hasil benchmark endpoint /api untuk mengamati dampak rate limiting terhadap request bersamaan. 
+
+
+>  `gojo`: access log (`429` dari `ApacheBench` dan `200` dari `curl`)
+
+<img width="434" height="197" alt="image" src="https://github.com/user-attachments/assets/57987f0e-57fc-457b-9402-236a37600642" />
+
+Access log Gojo menunjukkan request API yang ditolak oleh rate limiting (429), kegagalan upstream frontend (502), dan respons sukses API (200). 
 
 ---
 
-## Daftar SS
-
-| Status | SS                                                                                                   |
-| ------ | ---------------------------------------------------------------------------------------------------- |
-| 🆕     | 12.3, 12.4, 17.4 (opsional), 19.2                                                                    |
-| ⚠️     | 18.2, 18.3, 18.5, 19.3, 20.1                                                                         |
-| ✅     | 12.1, 12.2, 13.1 sampai 13.4, 14.1 sampai 14.13, 15.1, 15.2, 16.1 sampai 16.3, 17.1 sampai 17.3, 17.5 sampai 17.8, 18.1, 18.4, 19.1, 19.4, 19.5, 20.2, 20.3 |
 ## Struktur repository
 
 ```text
