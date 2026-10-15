@@ -1,0 +1,81 @@
+```bash
+#!/bin/bash
+set -e
+GOJO_IP=${1:-10.88.1.10}
+LAST=${GOJO_IP##*.}
+ZDIR=/etc/bind/jujutsu
+mkdir -p $ZDIR
+
+# serial: ambil tertinggi dari zona sekarang, minimal 2026101402, lalu +1
+S1=$(dig @127.0.0.1 jujutsu.K-49.com SOA +short 2>/dev/null | awk '{print $3}')
+S2=$(dig @10.88.1.3 jujutsu.K-49.com SOA +short 2>/dev/null | awk '{print $3}')
+SERIAL=$(printf '%s\n' ${S1:-0} ${S2:-0} 2026101402 | sort -n | tail -n1)
+SERIAL=$((SERIAL + 1)); echo "SERIAL=$SERIAL"
+
+cat > $ZDIR/jujutsu.K-49.com <<EOF
+\$TTL 604800
+@   IN SOA utahime.jujutsu.K-49.com. root.jujutsu.K-49.com. (
+        $SERIAL ; Serial
+        604800
+        86400
+        2419200
+        604800 )
+@       IN NS utahime.jujutsu.K-49.com.
+@       IN NS shoko.jujutsu.K-49.com.
+utahime IN A 10.88.1.2
+shoko   IN A 10.88.1.3
+tengen  IN A 10.88.4.10
+@       IN A $GOJO_IP
+gojo    IN A $GOJO_IP
+www     IN CNAME jujutsu.K-49.com.
+EOF
+
+cat > $ZDIR/db.10.88.1 <<EOF
+\$TTL 604800
+@   IN SOA utahime.jujutsu.K-49.com. root.jujutsu.K-49.com. (
+        $SERIAL ; Serial
+        604800
+        86400
+        2419200
+        604800 )
+@       IN NS utahime.jujutsu.K-49.com.
+@       IN NS shoko.jujutsu.K-49.com.
+2       IN PTR utahime.jujutsu.K-49.com.
+3       IN PTR shoko.jujutsu.K-49.com.
+$LAST      IN PTR jujutsu.K-49.com.
+EOF
+
+grep -q '1.88.10.in-addr.arpa' /etc/bind/named.conf.local || cat >> /etc/bind/named.conf.local <<'EOF'
+
+zone "1.88.10.in-addr.arpa" {
+    type master;
+    file "/etc/bind/jujutsu/db.10.88.1";
+    notify yes;
+    also-notify { 10.88.1.3; };
+    allow-transfer { 10.88.1.3; };
+};
+EOF
+
+cat > /etc/bind/named.conf.options <<'EOF'
+options {
+    directory "/var/cache/bind";
+    forwarders { 192.168.122.1; };
+    recursion yes;
+    allow-recursion { 10.88.0.0/16; localhost; };
+    allow-query { any; };
+    dnssec-validation no;
+    listen-on-v6 { any; };
+};
+EOF
+
+named-checkzone jujutsu.K-49.com $ZDIR/jujutsu.K-49.com
+named-checkzone 1.88.10.in-addr.arpa $ZDIR/db.10.88.1
+named-checkconf
+service named restart
+sleep 2
+echo "== uji lokal =="
+dig @127.0.0.1 jujutsu.K-49.com A +short
+dig @127.0.0.1 www.jujutsu.K-49.com CNAME +short
+dig @127.0.0.1 -x $GOJO_IP +short
+dig @127.0.0.1 google.com +short
+```
